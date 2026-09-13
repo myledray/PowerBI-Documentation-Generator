@@ -1,5 +1,56 @@
 # PowerBI-Documentation-Generator
-An app built to generate extensive documentation by uploading .pbix files
+A lightweight, scalable application for generating documentation for Power BI projects (.pbix files only).
+
+**Project Status:** Prototype / In development
+
+## Overview 
+
+Power BI Documentation Generator aims to reduce the manual effor involed in documenting Power BI projects.
+
+### Supported Capabilities 
+
+| Area | Current Support |
+| --- | --- |
+| Input formats | [Supported formats] |
+| Documented metadata | [Supported model or report elements] |
+| Output formats | [Supported formats] |
+| Execution | [CLI / Local application / Web application] |
+
+### Scope and limitations
+
+[Describe the boundaries users should understand before getting started.]
+
+- [Current limitation]
+- [Unsupported input or feature]
+- [Any prerequisites imposed by the supported workflow]
+
+## Example output
+
+[Include a short excerpt or screenshot from actual generated documentation.
+Identify the input used and omit sensitive information.]
+
+## Getting started
+
+### Prerequisites
+
+- [Required runtime and supported version]
+- [Required dependencies or tools]
+- [Power BI project preparation, if needed]
+- [Credentials or permissions, if needed]
+
+### Installation
+
+[Insert the exact commands needed to install and configure the application
+from a clean checkout.]
+
+### Generate your first document
+
+1. [Prepare a supported input.]
+2. [Start the application or run the generation command.]
+3. [Select or specify the input and output location.]
+4. [Generate and open the documentation.]
+
+**Expected result:** [Describe the generated files and where to find them.]
 
 ## Architecture 
 #### StreamLit UI
@@ -20,7 +71,7 @@ An app built to generate extensive documentation by uploading .pbix files
 3. Combines both into a professional documentation package 
 4. Exports the result as a word document 
 
-## Docuementation Generated Sections 
+## What the documentation Includes 
 1. Heading
     - Report Name
 2. Executive Summary
