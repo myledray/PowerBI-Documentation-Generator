@@ -1,3 +1,5 @@
+from pydoc import doc
+
 import streamlit as st
 import zipfile
 import io
@@ -141,6 +143,29 @@ def extract_visuals_from_pbix(uploaded_zip):
         "warning": None if visuals else "No visuals found in the PBIX archive",
     }
 
+# Add a table to the Word document for the given records and columns
+def add_records_table(doc, records, columns):
+    # columns contains (display heading, dictionary key) pairs
+    if not records:
+        doc.add_paragraph("No records returned.")
+        return
+
+    table = doc.add_table(rows=1, cols=len(columns))
+    table.style = "Table Grid"
+
+    for cell, (heading, _) in zip(table.rows[0].cells, columns):
+        cell.text = heading
+        for run in cell.paragraphs[0].runs:
+            run.bold = True
+
+    for record in records:
+        cells = table.add_row().cells
+        for cell, (_, key) in zip(cells, columns):
+            value = record.get(key)
+            cell.text = "" if value is None else str(value)
+
+    return table
+
 # Create a Word document with the parsed data and user-input
 def export_word_document(parsed, business_info, output_path):
     doc = Document()
@@ -149,7 +174,6 @@ def export_word_document(parsed, business_info, output_path):
     # Add the Executive Summary section
     doc.add_heading("Executive Summary", level=1)
     p1 = doc.add_paragraph("Summary of the Power BI Report")
-    p1.add_run('bold').bold = True
     p1.add_run("\n\n")
     p1.add_run(business_info["description"])
     p1.add_run("\n\nBusiness Purpose: ").bold = True
@@ -166,7 +190,6 @@ def export_word_document(parsed, business_info, output_path):
     # Add the Business Information section
     doc.add_heading("Business Information", level=1)
     p2 = doc.add_paragraph("Business Information Details")
-    p2.add_run('bold').bold = True
     p2.add_run("\n\n")
     p2.add_run("Business Owner: ").bold = True
     p2.add_run(business_info["business_owner"])
@@ -180,7 +203,6 @@ def export_word_document(parsed, business_info, output_path):
     # Add the Technical Information section
     doc.add_heading("Technical Information", level=1)
     p3 = doc.add_paragraph("Technical Information Details")
-    p3.add_run('bold').bold = True
     p3.add_run("\n\n")
     p3.add_run("Refresh Schedule: ").bold = True
     p3.add_run(business_info["refresh_schedule"])
@@ -211,95 +233,99 @@ def export_word_document(parsed, business_info, output_path):
     # Add the Power Query section
     doc.add_heading("Power Query", level=1)
     p9 = doc.add_paragraph("Power Query Details")
-    p9.add_run('bold').bold = True
     p9.add_run("\n\n")
-    for pq in parsed["power_query"]:
-        p9.add_run(
-            f"Table Name: {pq.get('TableName')} | "
-            f"Expression: {pq.get('Expression')}\n"
-        )
-    p9.add_run("\n\n:m_parameters ").bold = True
-    for m_parameters in parsed["m_parameters"]:
-        p9.add_run(
-            f"Parameter Name: {m_parameters.get('ParameterName')} | "
-            f"Description: {m_parameters.get('Description')} | "
-            f"Expression: {m_parameters.get('Expression')} | "
-            f"ModifiedTime {m_parameters.get('ModifiedTime')}\n"
-        )
+    # Add the Power Query Records table
+    p9.add_run("Power Query Records: ").bold = True
+    add_records_table(doc, parsed["power_query"], [
+        ("Table Name", 'TableName'), 
+        ("Expression", 'Expression')
+    ])
+    # Add the M Parameters Records table
+    p9.add_run("\n\nM Parameters: ").bold = True
+    add_records_table(doc, parsed["m_parameters"], [
+        ("Parameter Name", "ParameterName"),
+        ("Description", "Description"),
+        ("Expression", "Expression"),
+        ("Modified Time", "ModifiedTime"),
+    ])
 
     # Add the Semantic Model section
     doc.add_heading("Semantic Model", level=1)
     p5 = doc.add_paragraph("Semantic Model Details")
     p5.add_run('bold').bold = True
     p5.add_run("\n\n")
-    for schema in parsed["schema"]:
-        p5.add_run(
-            f"Table Name: {schema.get('TableName')} | "
-            f"Column Name: {schema.get('ColumnName')} | "
-            f"Pandas Data Type: {schema.get('PandasDataType')}"
-        )
+    # Add the Schema Records table
+    p5.add_run("Schema: ").bold = True
+    add_records_table(doc, parsed["schema"], [
+        ("Table Name", "TableName"),
+        ("Column Name", "ColumnName"),
+        ("Pandas Data Type", "PandasDataType"),
+    ])
+    # Add the Measures Tables Records table
     p5.add_run("\n\nMeasures: ").bold = True
-    for measure in parsed["measures"]:
-        p5.add_run(
-            f"TableName: {measure.get('TableName')} | "
-            f"Measure: {measure.get('Name')} | "
-            f"Expression: {measure.get('Expression')}"
-        )
+    add_records_table(doc, parsed["measures"], [
+        ("Table Name", "TableName"),
+        ("Measure", "Name"),
+        ("Expression", "Expression"),
+    ])
+    # Add the DAX Columns Records table
     p5.add_run("\n\nDAX Columns: ").bold = True
-    for dax_columns in parsed["dax_columns"]:
-        p5.add_run(
-            f"TableName: {dax_columns.get('TableName')} | "
-            f"Column Name: {dax_columns.get('ColumnName')} | "
-            f"Expression: {dax_columns.get('Expression')}"
-        )
+    add_records_table(doc, parsed["dax_columns"], [
+        ("Table Name", "TableName"),
+        ("Column Name", "ColumnName"),
+        ("Expression", "Expression"),
+    ])
 
     # Add the Relationships section
     doc.add_heading("Relationships", level=1)
     p6 = doc.add_paragraph("Relationships Details")
     p6.add_run('bold').bold = True
     p6.add_run("\n\n")
-    for relationships in parsed["relationships"]:
-        p6.add_run(
-            f"From Table Name: {relationships.get('FromTableName')} | "
-            f"From Column Name: {relationships.get('FromColumnName')} | "
-            f"To Table Name: {relationships.get('ToTableName')} | "
-            f"To Column Name: {relationships.get('ToColumnName')} | "
-            f"Is Active: {relationships.get('IsActive')} | "
-            f"Cardinality: {relationships.get('Cardinality')} | "
-            f"Cross Filter Behavior: {relationships.get('CrossFilteringBehavior')} | "
-            f"From Key Count: {relationships.get('FromKeyCount')} | "
-            f"To Key Count: {relationships.get('ToKeyCount')} | "
-            f"Rely On Referencial Integrity: {relationships.get('RelyOnReferentialIntegrity')}\n"
-        )
+    # Add the Relationships Records table
+    p6.add_run("Relationships: ").bold = True
+    add_records_table(doc, parsed["relationships"], [
+        ("From Table Name", "FromTableName"),
+        ("From Column Name", "FromColumnName"),
+        ("To Table Name", "ToTableName"),
+        ("To Column Name", "ToColumnName"),
+        ("Is Active", "IsActive"),
+        ("Cardinality", "Cardinality"),
+        ("Cross Filter Behavior", "CrossFilteringBehavior"),
+        ("From Key Count", "FromKeyCount"),
+        ("To Key Count", "ToKeyCount"),
+        ("Rely On Referential Integrity", "RelyOnReferentialIntegrity")
+    ])
 
     # Add the Aggregations section
     doc.add_heading("Aggregations", level=1)
     p10 = doc.add_paragraph("Aggregations Details")
     p10.add_run('bold').bold = True
     p10.add_run("\n\n")
-    for aggregations in parsed["aggregations"]:
-        p10.add_run(
-            f"Aggregation Table: {aggregations.get('AggregationTable')} | "
-            f"Aggregation Column: {aggregations.get('AggregationColumn')} | "
-            f"Summarization: {aggregations.get('Summarization')} | "
-            f"Detail Table: {aggregations.get('DetailTable')} | "
-            f"Detail Column: {aggregations.get('DetailColumn')}\n"
-        )
+    # Add the Aggregations Records table
+    p10.add_run("Aggregations: ").bold = True
+    add_records_table(doc, parsed["aggregations"], [
+        ("Aggregation Table", "AggregationTable"),
+        ("Aggregation Column", "AggregationColumn"),
+        ("Summarization", "Summarization"),
+        ("Detail Table", "DetailTable"),
+        ("Detail Column", "DetailColumn")
+    ])
 
     # Add the Row Level Security (RLS) section
     doc.add_heading("Row Level Security (RLS)", level=1)
     p8 = doc.add_paragraph("Row Level Security (RLS) Details")
     p8.add_run('bold').bold = True
     p8.add_run("\n\n")
-    for rls in parsed["rls"]:
-        p8.add_run(
-            f"Table Name: {rls.get('TableName')} | "
-            f"Role Name: {rls.get('RoleName')} | "
-            f"Role Description: {rls.get('RoleDescription')} | "
-            f"Filter Expression: {rls.get('FilterExpression')} |"
-            f"State: {rls.get('State')} | "
-            f"Metadate Permissions: {rls.get('MetadataPermission')}\n"
-        )
+    # Add the Row Level Security (RLS) Records table
+    p8.add_run("Row Level Security (RLS): ").bold = True
+    add_records_table(doc, parsed["rls"], [
+        ("Table Name", "TableName"),
+        ("Role Name", "RoleName"),
+        ("Role Description", "RoleDescription"),
+        ("Filter Expression", "FilterExpression"),
+        ("State", "State"),
+        ("Metadata Permissions", "MetadataPermission")
+    ])
         
     # Add the Visualizations section
     doc.add_heading("Visualizations", level=1)
