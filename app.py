@@ -7,145 +7,11 @@ from pathlib import Path
 from docx import Document
 from pbixray import PBIXRay
 
-# Create the main title for the app
-st.title("PowerBI Documentation Generator")
-st.subheader("Generate comprehensive documentation for your PowerBI reports with ease.")
-
-# Form Container
-with st.form(key="user_info_form"):
-    st.subheader("Please fill out your details")
-
-    # Add the file uploader constrained to .zip files
-    uploaded_zip = st.file_uploader(
-        label="Select .pbixfile to upload",
-        type=["pbix"],
-        help="Only .pbix files are supported."
-    )
-
-    #===============================================
-    # Section 1
-    #===============================================
-    st.markdown("### 1. Ownership Information")
-    st.divider() # Optional visual line divider
-
-    col1, col2 = st.columns(2)
-    # 2. inputs inside the form
-    with col1:
-        business_owner = st.text_input("Business Owner Name")
-        technical_owner = st.text_input("Technical Owner Name")
-    with col2:
-        support_team = st.text_input("Support team")
-        maintainer = st.text_input("Maintainer")
-    
-    # Add a blank line for spacing
-    st.write("")
-
-    #===============================================
-    # Section 2
-    #===============================================
-    st.markdown("### 2. Report Information")
-    st.divider() # Optional visual line divider
-
-    report_name = st.text_input("Report Name")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        description = st.text_area("Report Description", height=150)
-        business_purpose = st.text_area("Business Purpose", height=150)
-        objectives = st.text_area("Objectives", height=150)
-    with col2:
-        target_audience = st.text_area("Target Audience", height=150)
-        scope = st.text_area("Scope", height=150)
-        out_of_scope = st.text_area("Out of Scope", height=150)
-
-    # Add a blank line for spacing
-    st.write("")
-
-    #===============================================
-    # Section 3
-    #===============================================
-    st.markdown("### 3. Operational Information")
-    st.divider() # Optional visual line divider
-
-    col1, col2 = st.columns(2)
-    with col1:
-        refresh_schedule = st.text_input("Refresh Schedule")
-        data_classification = st.text_input("Data Classification")
-        dependencies = st.text_area("Dependencies", height=150)
-    with col2:
-        known_limitations = st.text_area("Known Limitations", height=150)
-        assumptions = st.text_area("Assumptions", height=150)
-        risk_assessment = st.text_area("Risk Assessment", height=150)
-    
-    # Add submit button
-    submit_button = st.form_submit_button(label="Submit Form")
-
-# Submit button logic
-if submit_button:
-    required_fields = {
-        "Business Owner": business_owner,
-        "Technical Owner": technical_owner,
-        "Report Name": report_name,
-        "Description": description,
-        "Business Purpose": business_purpose,
-        "Objectives": objectives,
-        "Target Audience": target_audience,
-        "Scope": scope,
-        "Out of Scope": out_of_scope,
-    }
-
-    missing = [name for name, value in required_fields.items() if value.strip() == ""]
-
-    if missing:
-        st.error("Please fill in all required fields: " + ", ".join(missing) + ".")
-    elif uploaded_zip is None:
-        st.error("Please select a Power BI .pbix file before clicking submit.")
-    elif not uploaded_zip.name.lower().endswith(".pbix"):
-        st.error("Only .pbix files are supported.")
-    else:
-        parsed = parse_pbixray(uploaded_zip)
-        visuals_info = extract_visuals_from_pbix(uploaded_zip)
-
-        business_info = {
-            "business_owner": business_owner,
-            "technical_owner": technical_owner,
-            "support_team": support_team,
-            "maintainer": maintainer,
-            "report_name": report_name,
-            "description": description,
-            "business_purpose": business_purpose,
-            "objectives": objectives,
-            "target_audience": target_audience,
-            "scope": scope,
-            "out_of_scope": out_of_scope,
-            "refresh_schedule": refresh_schedule,
-            "data_classification": data_classification,
-            "dependencies": dependencies,
-            "known_limitations": known_limitations,
-            "assumptions": assumptions,
-            "risk_assessment": risk_assessment,
-        }
-
-        output_dir = Path("output")
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / "powerbi_documentation.docx"
-
-        export_word_document(parsed, business_info, str(output_path))
-        st.success("Documentation package generated successfully.")
-
-        with open(output_path, "rb") as f:
-            st.download_button(
-                label="Download Word Document",
-                data=f.read(),
-                file_name="powerbi_documentation.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            )
-
 # Parse the uploaded .pbix file using PBIXRay
 def parse_pbixray(uploaded_zip):
     # Use PBIXRay to parse the Power BI file
     file_bytes = uploaded_zip.getvalue()
-    model = PBIXRay(file_bytes).parse()
+    model = PBIXRay(io.BytesIO(uploaded_zip.getvalue()))
     
     tables = model.tables
     if hasattr(tables, "to_dict"):
@@ -153,9 +19,9 @@ def parse_pbixray(uploaded_zip):
     metadata = model.metadata
     if hasattr(metadata, "to_dict"):
         metadata = metadata.to_dict(orient="records")  # Convert to list of dicts
-    powerquery = model.powerquery
-    if hasattr(powerquery, "to_dict"):
-        powerquery = powerquery.to_dict(orient="records")  # Convert to list of dicts
+    power_query = model.power_query
+    if hasattr(power_query, "to_dict"):
+        power_query = power_query.to_dict(orient="records")  # Convert to list of dicts
     m_parameters = model.m_parameters
     if hasattr(m_parameters, "to_dict"):
         m_parameters = m_parameters.to_dict(orient="records")  # Convert to list of dicts
@@ -187,7 +53,7 @@ def parse_pbixray(uploaded_zip):
     return {
         "tables": tables,
         "metadata": metadata,
-        "powerquery": powerquery,
+        "power_query": power_query,
         "m_parameters": m_parameters,
         "dax_tables": dax_tables,
         "measures": measures,
@@ -335,7 +201,10 @@ def export_word_document(parsed, business_info, output_path):
     p4.add_run('bold').bold = True
     p4.add_run("\n\n")
     p4.add_run("Connections: ").bold = True
-    p4.add_run(", ".join(parsed["connections"]))
+    p4.add_run("\n".join(
+        json.dumps(connection, ensure_ascii=False, default=str)
+        for connection in parsed["connections"]
+    ))
     p4.add_run("\n\nTables: ").bold = True
     p4.add_run(", ".join(parsed["tables"]))
 
@@ -344,7 +213,7 @@ def export_word_document(parsed, business_info, output_path):
     p9 = doc.add_paragraph("Power Query Details")
     p9.add_run('bold').bold = True
     p9.add_run("\n\n")
-    for pq in parsed["powerquery"]:
+    for pq in parsed["power_query"]:
         p9.add_run(
             f"Table Name: {pq.get('TableName')} | "
             f"Expression: {pq.get('Expression')}\n"
@@ -439,17 +308,16 @@ def export_word_document(parsed, business_info, output_path):
     p7.add_run("\n\n")
     for visual in parsed.get("visuals", []):
         p7.add_run(
-        f"Name: {visual.get('name')} | "
-        f"Type: {visual.get('visualType')} | "
-        f"Layout: {visual.get('layout')}\n"
-    )
-    if "filters" in visual:
-        for f in visual["filters"]:
+            f"Name: {visual.get('name')} | "
+            f"Type: {visual.get('visualType')} | "
+            f"Layout: {visual.get('layout')}\n"
+        )
+        for f in visual.get("filters", []) or []:
             p7.add_run(f"Filter: {f}\n")
-
-    if "columns" in visual:
-        for c in visual["columns"]:
+        for c in visual.get("columns", []) or []:
             p7.add_run(f"Column: {c}\n")
+
+    doc.save(output_path)
 
 # Download button
 def download_word_document(output_path):
@@ -460,3 +328,140 @@ def download_word_document(output_path):
             file_name="powerbi_documentation.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
+
+# Create the main title for the app
+st.title("PowerBI Documentation Generator")
+st.subheader("Generate comprehensive documentation for your PowerBI reports with ease.")
+
+# Form Container
+with st.form(key="user_info_form"):
+    st.subheader("Please fill out your details")
+
+    # Add the file uploader constrained to .zip files
+    uploaded_zip = st.file_uploader(
+        label="Select .pbixfile to upload",
+        type=["pbix"],
+        help="Only .pbix files are supported."
+    )
+
+    #===============================================
+    # Section 1
+    #===============================================
+    st.markdown("### 1. Ownership Information")
+    st.divider() # Optional visual line divider
+
+    col1, col2 = st.columns(2)
+    # inputs inside the form
+    with col1:
+        business_owner = st.text_input("Business Owner Name")
+        technical_owner = st.text_input("Technical Owner Name")
+    with col2:
+        support_team = st.text_input("Support team")
+        maintainer = st.text_input("Maintainer")
+    
+    # Add a blank line for spacing
+    st.write("")
+
+    #===============================================
+    # Section 2
+    #===============================================
+    st.markdown("### 2. Report Information")
+    st.divider() # Optional visual line divider
+
+    report_name = st.text_input("Report Name")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        description = st.text_area("Report Description", height=150)
+        business_purpose = st.text_area("Business Purpose", height=150)
+        objectives = st.text_area("Objectives", height=150)
+    with col2:
+        target_audience = st.text_area("Target Audience", height=150)
+        scope = st.text_area("Scope", height=150)
+        out_of_scope = st.text_area("Out of Scope", height=150)
+
+    # Add a blank line for spacing
+    st.write("")
+
+    #===============================================
+    # Section 3
+    #===============================================
+    st.markdown("### 3. Operational Information")
+    st.divider() # Optional visual line divider
+
+    col1, col2 = st.columns(2)
+    with col1:
+        refresh_schedule = st.text_input("Refresh Schedule")
+        data_classification = st.text_input("Data Classification")
+        dependencies = st.text_area("Dependencies", height=150)
+    with col2:
+        known_limitations = st.text_area("Known Limitations", height=150)
+        assumptions = st.text_area("Assumptions", height=150)
+        risk_assessment = st.text_area("Risk Assessment", height=150)
+    
+    # Add submit button
+    submit_button = st.form_submit_button(label="Submit Form")
+
+# Submit button logic
+if submit_button:
+    required_fields = {
+        "Business Owner": business_owner,
+        "Technical Owner": technical_owner,
+        "Report Name": report_name,
+        "Description": description,
+        "Business Purpose": business_purpose,
+        "Objectives": objectives,
+        "Target Audience": target_audience,
+        "Scope": scope,
+        "Out of Scope": out_of_scope,
+    }
+
+    missing = [name for name, value in required_fields.items() if value.strip() == ""]
+
+    if missing:
+        st.error("Please fill in all required fields: " + ", ".join(missing) + ".")
+    elif uploaded_zip is None:
+        st.error("Please select a Power BI .pbix file before clicking submit.")
+    elif not uploaded_zip.name.lower().endswith(".pbix"):
+        st.error("Only .pbix files are supported.")
+    else:
+        parsed = parse_pbixray(uploaded_zip)
+        visuals_info = extract_visuals_from_pbix(uploaded_zip)
+        parsed["visuals"] = visuals_info["visuals"]
+        if visuals_info.get("warning"):
+            st.warning(visuals_info["warning"])
+
+        business_info = {
+            "business_owner": business_owner,
+            "technical_owner": technical_owner,
+            "support_team": support_team,
+            "maintainer": maintainer,
+            "report_name": report_name,
+            "description": description,
+            "business_purpose": business_purpose,
+            "objectives": objectives,
+            "target_audience": target_audience,
+            "scope": scope,
+            "out_of_scope": out_of_scope,
+            "refresh_schedule": refresh_schedule,
+            "data_classification": data_classification,
+            "dependencies": dependencies,
+            "known_limitations": known_limitations,
+            "assumptions": assumptions,
+            "risk_assessment": risk_assessment,
+        }
+
+        output_dir = Path("output")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "powerbi_documentation.docx"
+
+        export_word_document(parsed, business_info, str(output_path))
+        st.success("Documentation package generated successfully.")
+
+        with open(output_path, "rb") as f:
+            st.download_button(
+                label="Download Word Document",
+                data=f.read(),
+                file_name="powerbi_documentation.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
