@@ -411,7 +411,7 @@ def export_word_document(parsed, business_info, output_path):
     for aggregations in parsed["aggregations"]:
         p10.add_run(
             f"Aggregation Table: {aggregations.get('AggregationTable')} | "
-            f"AggregationColumn: {aggregations.get('AggregationColumn')} | "
+            f"Aggregation Column: {aggregations.get('AggregationColumn')} | "
             f"Summarization: {aggregations.get('Summarization')} | "
             f"Detail Table: {aggregations.get('DetailTable')} | "
             f"Detail Column: {aggregations.get('DetailColumn')}\n"
