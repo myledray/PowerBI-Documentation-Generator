@@ -337,9 +337,16 @@ st.subheader("Generate comprehensive documentation for your PowerBI reports with
 with st.form(key="user_info_form"):
     st.subheader("Please fill out your details")
 
+    # Current Power BI Document Upload Section (to autofill fields if possible)
+    Current_document = st.file_uploader(
+        label="Upload Current Power BI Document (Optional)",
+        type=["Word", "docx"],
+        help="Upload a Word document to autofill fields if available."
+    )
+
     # Add the file uploader constrained to .zip files
     uploaded_zip = st.file_uploader(
-        label="Select .pbixfile to upload",
+        label="Select .pbix file to upload",
         type=["pbix"],
         help="Only .pbix files are supported."
     )
