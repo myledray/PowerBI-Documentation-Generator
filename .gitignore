@@ -1,0 +1,25 @@
+# Python virtual environments
+.venv/
+venv/
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Streamlit/Word output folder
+output/
+*.docx
+
+# Uploaded Power BI source files
+*.pbix
+*.pbit
+*.pbip
+
+# OS and editor junk
+.DS_Store
+Thumbs.db
+
+# Local environment secrets
+.env
+.env.*
