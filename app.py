@@ -266,7 +266,7 @@ def export_word_document(parsed, business_info, output_path):
             f"To Column Name: {relationships.get('ToColumnName')} | "
             f"Is Active: {relationships.get('IsActive')} | "
             f"Cardinality: {relationships.get('Cardinality')} | "
-            f"Cross Filter Behavior: {relationships.get('crossFilteringBehavior')} | "
+            f"Cross Filter Behavior: {relationships.get('CrossFilteringBehavior')} | "
             f"From Key Count: {relationships.get('FromKeyCount')} | "
             f"To Key Count: {relationships.get('ToKeyCount')} | "
             f"Rely On Referencial Integrity: {relationships.get('RelyOnReferentialIntegrity')}\n"
